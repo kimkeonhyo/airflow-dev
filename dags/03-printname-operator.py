@@ -9,6 +9,7 @@ def print_name_time(**kwargs):  # kwargs를 사용하여 context 정보를 받�
     dag_name = kwargs['task_instance'].dag_id
     print(f"DAG name: {dag_name}")
     print(f"Current time: {now}")
+    print('hllo')
     return "success"  # 성공적으로 실행된 경우 반환
 
 with DAG(
@@ -23,8 +24,8 @@ with DAG(
         python_callable=print_name_time,
         provide_context=True
     )
-    send_email_task = EmailOperator(
-        task_id='send_email_task', # task_id와 변수명 일치시키기
+    success_email_task = EmailOperator(
+        task_id='success_email_task', # task_id와 변수명 일치시키기
         to='rjsgy033@gmail.com',
         subject='[Airflow] ✅ Success !',
         html_content=' DAG: {{ task_instance.dag_id }}<br> Task: {{ task_instance.task_id }}<br> Execution Time: {{ ts }}<br> Log URL: {{ task_instance.log_url }}'
@@ -33,4 +34,13 @@ with DAG(
         # python 함수를 이용하여 task 시작 조건 제시
     )
 
-print_name_task >> send_email_task
+    failure_task = EmailOperator(
+        task_id='failure_task',
+        to='rjsgy033@gmail.com',
+        subject='[Airflow] ❌ Fail!',
+        html_content='DAG: {{ task_instance.dag_id }}<br> Task: {{ task_instance.task_id }}<br> Execution Time: {{ ts }}<br> Log URL: {{ task_instance.log_url }}',
+        trigger_rule='one_failed'  # 하나라도 실패하면 실행
+    )
+
+    # 태스크 간의 의존성 설정
+    print_name_task >> [success_email_task, failure_task]  # 성공 시 success_task, 실패 시 failure_task로 분기
