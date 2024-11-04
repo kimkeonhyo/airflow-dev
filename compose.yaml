@@ -1,0 +1,140 @@
+version: '3.4'
+
+x-common-env-vars: &common-env-vars
+  AIRFLOW__CORE__EXECUTOR: LocalExecutor
+  AIRFLOW__CORE__SQL_ALCHEMY_CONN: ${AIRFLOW__CORE__SQL_ALCHEMY_CONN}
+  AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
+  AIRFLOW__CORE__LOAD_EXAMPLES: ${AIRFLOW__CORE__LOAD_EXAMPLES}
+  AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
+  AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW__WEBSERVER__SECRET_KEY}
+  AIRFLOW__WEBSERVER__RBAC: ${AIRFLOW__WEBSERVER__RBAC}
+  AIRFLOW__WEBSERVER__EXPOSE_CONFIG: ${AIRFLOW__WEBSERVER__EXPOSE_CONFIG}
+  ASTRONOMER_ENVIRONMENT: ${ASTRONOMER_ENVIRONMENT}
+
+  #Gmail App Settings
+  AIRFLOW__SMTP__SMTP_HOST: ${AIRFLOW__SMTP__SMTP_HOST}
+  AIRFLOW__SMTP__SMTP_USER: ${AIRFLOW__SMTP__SMTP_USER}
+  AIRFLOW__SMTP__SMTP_PASSWORD: ${AIRFLOW__SMTP__SMTP_PASSWORD}
+  AIRFLOW__SMTP__SMTP_PORT: ${AIRFLOW__SMTP__SMTP_PORT}
+  AIRFLOW__SMTP__SMTP_MAIL_FROM: ${AIRFLOW__SMTP__SMTP_MAIL_FROM}
+
+networks:
+  airflow:
+    driver: bridge
+
+volumes:
+  #postgres_data:
+  #  driver: local
+  airflow_logs:
+    driver: local
+
+services:
+#  postgres:
+#    image: docker.io/postgres:12.6
+#    restart: unless-stopped
+#    networks:
+#      - airflow
+#    labels:
+#      io.astronomer.docker: "true"
+#      io.astronomer.docker.cli: "true"
+#    ports:
+#      - 127.0.0.1:5432:5432
+#    volumes:
+#      
+#      - postgres_data:/var/lib/postgresql/data
+#      
+#    environment:
+#      POSTGRES_USER: postgres
+#      POSTGRES_PASSWORD: postgres
+
+  scheduler:
+    image: airflow-practice_3704d8/airflow:latest
+    command: >
+      bash -c "(airflow db upgrade || airflow upgradedb) && airflow scheduler"
+    restart: unless-stopped
+    networks:
+      - airflow
+    user: astro
+    labels:
+      io.astronomer.docker: "true"
+      io.astronomer.docker.cli: "true"
+      io.astronomer.docker.component: "airflow-scheduler"
+    #depends_on:
+    #  - postgres
+    environment: *common-env-vars
+    volumes:
+      - /home/user/airflow-practice/dags:/usr/local/airflow/dags:z
+      - /home/user/airflow-practice/plugins:/usr/local/airflow/plugins:z
+      - /home/user/airflow-practice/include:/usr/local/airflow/include:z
+      - /home/user/airflow-practice/tests:/usr/local/airflow/tests:z
+
+      - /home/user/airflow-practice/airflow_settings.yaml:/usr/local/airflow/airflow_settings.yaml:z
+
+      
+      - airflow_logs:/usr/local/airflow/logs
+      
+    
+
+  webserver:
+    image: airflow-practice_3704d8/airflow:latest
+    command: >
+      bash -c 'if [[ -z "$$AIRFLOW__API__AUTH_BACKEND" ]] && [[ $$(pip show -f apache-airflow | grep basic_auth.py) ]];
+        then export AIRFLOW__API__AUTH_BACKEND=airflow.api.auth.backend.basic_auth ;
+        else export AIRFLOW__API__AUTH_BACKEND=airflow.api.auth.backend.default ; fi &&
+        { airflow users create "$$@" || airflow create_user "$$@" ; } &&
+        { airflow sync-perm || airflow sync_perm ;} &&
+        airflow webserver' -- -r Admin -u admin -e admin@example.com -f admin -l user -p admin
+    restart: unless-stopped
+    networks:
+      - airflow
+    user: astro
+    labels:
+      io.astronomer.docker: "true"
+      io.astronomer.docker.cli: "true"
+      io.astronomer.docker.component: "airflow-webserver"
+    depends_on:
+      - scheduler
+    #  - postgres
+    environment: *common-env-vars
+    ports:
+      - 127.0.0.1:8080:8080
+    volumes:
+      - /home/user/airflow-practice/dags:/usr/local/airflow/dags:z
+      - /home/user/airflow-practice/plugins:/usr/local/airflow/plugins:z
+      - /home/user/airflow-practice/include:/usr/local/airflow/include:z
+      - /home/user/airflow-practice/tests:/usr/local/airflow/tests:z
+      
+      - airflow_logs:/usr/local/airflow/logs
+      
+    healthcheck:
+      test: curl --fail http://webserver:8080/health || exit 1
+      interval: 2s
+      retries: 15
+      start_period: 5s
+      timeout: 60s
+    
+
+  triggerer:
+    image: airflow-practice_3704d8/airflow:latest
+    command: >
+      bash -c "(airflow db upgrade || airflow upgradedb) && airflow triggerer"
+    restart: unless-stopped
+    networks:
+      - airflow
+    user: astro
+    labels:
+      io.astronomer.docker: "true"
+      io.astronomer.docker.cli: "true"
+      io.astronomer.docker.component: "airflow-triggerer"
+    #depends_on:
+    #  - postgres
+    environment: *common-env-vars
+    volumes:
+      - /home/user/airflow-practice/dags:/usr/local/airflow/dags:z
+      - /home/user/airflow-practice/plugins:/usr/local/airflow/plugins:z
+      - /home/user/airflow-practice/include:/usr/local/airflow/include:z
+      
+      - airflow_logs:/usr/local/airflow/logs
+      
+    
+

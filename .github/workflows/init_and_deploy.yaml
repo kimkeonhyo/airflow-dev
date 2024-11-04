@@ -71,7 +71,7 @@ jobs:
 
               echo "⭐️ Astronomer 설치 및 Airflow 시작"
               curl -sSL install.astronomer.io | sudo bash -s -- v1.25.0 
-              git clone git@github.com:TEDD325/airflow-practice.git
+              git clone git@github.com:kimkeonhyo/airflow-dev.git
               cd airflow-practice
               touch .env
               astro dev start 2>astro_error.log &
@@ -121,6 +121,6 @@ jobs:
             CURRENT_DIR=$(pwd)
             cd $CURRENT_DIR/${{ vars.repository_name }}
             echo "현재 위치: $(pwd)"
-            git pull origin main
+            git pull origin master
             echo "⭐️ 배포 완료"
             # 추가적인 배포 명령어
