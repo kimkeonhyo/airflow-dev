@@ -3,7 +3,7 @@ name: Initialization and Deployment Workflow
 on:
   push:
     branches:
-      - master
+      - main
 
 jobs:
   initialization:
@@ -123,4 +123,4 @@ jobs:
             echo "현재 위치: $(pwd)"
             git pull origin main
             echo "⭐️ 배포 완료"
-            # 추가적인 배포 명령어
+            # 추가적인 배포 명령어들
