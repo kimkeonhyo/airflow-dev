@@ -134,6 +134,8 @@ services:
       - /home/user/airflow-practice/plugins:/usr/local/airflow/plugins:z
       - /home/user/airflow-practice/include:/usr/local/airflow/include:z
       
+      - /home/user/airflow-practice/data/logs:/usr/local/airflow/data/logs:z
+
       - airflow_logs:/usr/local/airflow/logs
       
     
